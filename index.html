@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Duelo Futebol Quiz - 2 Gols Vencem</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #111; color: #fff; overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
+        #scoreboard { height: 12vh; background: #222; display: flex; justify-content: space-around; align-items: center; border-bottom: 2px solid #444; font-weight: bold; font-size: 1.2rem; }
+        .score-box { background: #000; padding: 5px 15px; border-radius: 5px; font-size: 1.5rem; }
+        #pitch-container { height: 20vh; background: linear-gradient(to right, #2e7d32 50%, #286f2b 50%); background-size: 40px 100%; position: relative; border-top: 3px solid #fff; border-bottom: 3px solid #fff; }
+        #ball { width: 20px; height: 20px; background: #fff; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: left 0.4s ease-out; z-index: 5; }
+        .player-figure { position: absolute; width: 18px; height: 32px; top: calc(50% - 16px); transition: left 0.4s ease-out; z-index: 4; display: flex; flex-direction: column; align-items: center; }
+        .head { width: 10px; height: 10px; background: #ffdbac; border-radius: 50%; }
+        .body-shirt { width: 14px; height: 12px; border-radius: 2px; }
+        .legs { display: flex; gap: 2px; height: 10px; }
+        .leg { width: 4px; height: 100%; background: #222; }
+        .running .leg-left { animation: runLeg 0.2s infinite alternate; }
+        .running .leg-right { animation: runLeg 0.2s infinite alternate-reverse; }
+        @keyframes runLeg { 0% { transform: translateY(-2px); } 100% { transform: translateY(2px); } }
+        .green-team .body-shirt { background: #1b5e20; }
+        .yellow-team .body-shirt { background: #fbc02d; }
+        #game-zone { height: 68vh; display: flex; }
+        .player-area { flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+        #p1-area { background: #1b3d1b; border-right: 2px solid #333; }
+        #p2-area { background: #3d3a1b; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-option { background: #333; color: #fff; border: 1px solid #555; padding: 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; }
+        #rotate-message { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; color: #fff; justify-content: center; align-items: center; }
+        @media (orientation: portrait) { #rotate-message { display: flex; } }
+    </style>
+</head>
+<body>
+
+    <div id="rotate-message">🔄 Por favor, vire o celular na horizontal!</div>
+
+    <div id="scoreboard">
+        <div class="team-score">VERDE: <span id="score-p1" class="score-box">0</span></div>
+        <div>DUELO QUIZ</div>
+        <div class="team-score">AMARELO: <span id="score-p2" class="score-box">0</span></div>
+    </div>
+
+    <div id="pitch-container">
+        <div id="p1-figure" class="player-figure green-team"><div class="head"></div><div class="body-shirt"></div><div class="legs"><div class="leg leg-left"></div><div class="leg leg-right"></div></div></div>
+        <div id="p2-figure" class="player-figure yellow-team"><div class="head"></div><div class="body-shirt"></div><div class="legs"><div class="leg leg-left"></div><div class="leg leg-right"></div></div></div>
+        <div id="ball"></div>
+    </div>
+
+    <div id="game-zone">
+        <div class="player-area" id="p1-area"><div id="p1-q" style="text-align:center;">Carregando...</div><div class="options-grid" id="p1-options"></div></div>
+        <div class="player-area" id="p2-area"><div id="p2-q" style="text-align:center;">Carregando...</div><div class="options-grid" id="p2-options"></div></div>
+    </div>
+
+    <script>
+        const questionsDB = [
+            { q: "Qual país venceu a Copa de 2018?", opts: ["Brasil", "França", "Alemanha", "Argentina"], ans: 1 },
+            { q: "Quantas Copas o Brasil tem?", opts: ["4", "5", "6", "3"], ans: 1 },
+            { q: "Onde fica o Maracanã?", opts: ["São Paulo", "Rio", "Belo Horizonte", "Porto Alegre"], ans: 1 },
+            { q: "Quem é 'O Fenômeno'?", opts: ["Pelé", "Romário", "Ronaldo", "Ronaldinho"], ans: 2 },
+            { q: "Qual o tamanho do campo (aprox)?", opts: ["50m", "100m", "200m", "80m"], ans: 1 },
+            { q: "O que é impedimento?", opts: ["Falta", "Regra tática", "Cartão", "Gol"], ans: 1 },
+            { q: "Qual clube é conhecido como 'Timão'?", opts: ["Flamengo", "Corinthians", "Santos", "Palmeiras"], ans: 1 },
+            { q: "Quem ganhou a Copa de 1970?", opts: ["Itália", "Brasil", "Inglaterra", "Alemanha"], ans: 1 },
+            { q: "O que significa VAR?", opts: ["Árbitro", "Video Assist", "Regra", "Gol"], ans: 1 },
+            { q: "Qual cor de cartão expulsa?", opts: ["Amarelo", "Vermelho", "Azul", "Branco"], ans: 1 },
+            { q: "Quantos jogadores em campo?", opts: ["10", "11", "9", "12"], ans: 1 },
+            { q: "Quem é o Rei do Futebol?", opts: ["Zico", "Pelé", "Messi", "CR7"], ans: 1 },
+            { q: "O que faz um goleiro?", opts: ["Faz gol", "Defende", "Corre", "Apita"], ans: 1 },
+            { q: "Qual país inventou o futebol?", opts: ["Brasil", "Inglaterra", "Itália", "França"], ans: 1 },
+            { q: "Qual o rival do Grêmio?", opts: ["Inter", "Juventude", "Caxias", "Figueirense"], ans: 0 },
+            { q: "O que é 'chapéu'?", opts: ["Passe", "Drible", "Falta", "Gol"], ans: 1 },
+            { q: "Quem treinou o Brasil em 2002?", opts: ["Felipão", "Tite", "Zagallo", "Parreira"], ans: 0 },
+            { q: "Onde foi a Copa de 2022?", opts: ["Catar", "Brasil", "Rússia", "França"], ans: 0 },
+            { q: "O que é 'goleada'?", opts: ["Muitos gols", "Falta", "Empate", "Prorrogação"], ans: 0 },
+            { q: "Qual seleção usa azul?", opts: ["Itália", "Alemanha", "Brasil", "Espanha"], ans: 0 }
+        ];
+
+        let scoreP1 = 0, scoreP2 = 0, ballPosition = 50;
+        const STEP = 10;
+
+        function renderQuestion(p) {
+            const q = questionsDB[Math.floor(Math.random() * questionsDB.length)];
+            const divQ = document.getElementById(p === 1 ? 'p1-q' : 'p2-q');
+            const divOpt = document.getElementById(p === 1 ? 'p1-options' : 'p2-options');
+            divQ.innerText = q.q;
+            divOpt.innerHTML = '';
+            q.opts.forEach((opt, i) => {
+                const b = document.createElement('button');
+                b.className = 'btn-option'; b.innerText = opt;
+                b.onclick = () => check(p, i, q.ans);
+                divOpt.appendChild(b);
+            });
+        }
+
+        function check(p, idx, ans) {
+            const fig = document.getElementById(p === 1 ? 'p1-figure' : 'p2-figure');
+            fig.classList.add('running');
+            setTimeout(() => fig.classList.remove('running'), 400);
+
+            if (idx === ans) move(p === 1 ? -STEP : STEP);
+            else move(p === 1 ? STEP / 2 : -STEP / 2);
+            renderQuestion(p);
+        }
+
+        function move(delta) {
+            ballPosition += delta;
+            if (ballPosition <= 5) { scoreP1++; checkWin(); ballPosition = 50; document.getElementById('score-p1').innerText = scoreP1; }
+            else if (ballPosition >= 95) { scoreP2++; checkWin(); ballPosition = 50; document.getElementById('score-p2').innerText = scoreP2; }
+            document.getElementById('ball').style.left = ballPosition + '%';
+            document.getElementById('p1-figure').style.left = (ballPosition + 3) + '%';
+            document.getElementById('p2-figure').style.left = (ballPosition - 3) + '%';
+        }
+
+        function checkWin() {
+            if (scoreP1 === 2 || scoreP2 === 2) {
+                alert((scoreP1 === 2 ? "VERDE" : "AMARELO") + " VENCEU A PARTIDA!");
+                scoreP1 = 0; scoreP2 = 0;
+                document.getElementById('score-p1').innerText = 0;
+                document.getElementById('score-p2').innerText = 0;
+            }
+        }
+
+        renderQuestion(1); renderQuestion(2);
+    </script>
+</body>
+</html>
